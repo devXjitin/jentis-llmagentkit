@@ -77,9 +77,6 @@ class Create_ReAct_Agent:
         if json_end > 0:
             json_str = json_str[:json_end]
         
-        # Fix double braces that LLM might copy from prompt template
-        json_str = json_str.replace('{{', '{').replace('}}', '}')
-        
         try:
             parsed_json = json.loads(json_str)
         except json.JSONDecodeError as e:
@@ -157,7 +154,7 @@ class Create_ReAct_Agent:
         # Build tool list string
         tool_list_str = "\n".join(
             f"    - {name}: {info['description']}"
-            + (f"\n      Parameters: " + ", ".join(
+            + (f"\nParameters: " + ", ".join(
                 f"{p} ({v.get('type', 'str')}, {'required' if v.get('required', True) else 'optional'})"
                 for p, v in info.get('parameters', {}).items()
               ) if info.get('parameters') else "")
@@ -169,14 +166,14 @@ class Create_ReAct_Agent:
         if self.memory and (context := self.memory.get_context()):
             memory_context = f"\n\nConversation History:\n{context}"
 
+        # Escape braces in dynamic content to prevent format() errors
+        tool_list_str = tool_list_str.replace("{", "{{").replace("}", "}}")
+        memory_context = memory_context.replace("{", "{{").replace("}", "}}")
+
         # Build tool list and compile base prompt
         compiled_prompt = self.prompt_template.replace("{tool_list}", tool_list_str).replace(
             "{previous_context}", memory_context
         )
-        
-        # Escape any curly braces from tool descriptions to prevent format() errors
-        compiled_prompt = compiled_prompt.replace("{", "{{").replace("}", "}}")
-        compiled_prompt = compiled_prompt.replace("{{user_input}}", "{user_input}")
         
         self.logger.agent_start(query)
 
@@ -239,12 +236,6 @@ class Create_ReAct_Agent:
                 scratchpad += f"\nAction Input: {action_input}"
                 scratchpad += f"\nObservation: {observation}"
                 
-                # Add hints for common errors
-                obs_lower = str(observation).lower()
-                if ('error' in obs_lower or observation == '' or 'no output' in obs_lower) and iteration <= 3:
-                    if 'volume' in obs_lower or 'audiodevice' in obs_lower:
-                        scratchpad += "\n\nHINT: Audio volume is NOT a direct property. Use:\n"
-                        scratchpad += "(Get-AudioDevice -Playback | Where-Object { $_.Default -eq $true }).Device.AudioEndpointVolume.MasterVolumeLevelScalar * 100\n"
             else:
                 # No action and no final answer - continue thinking
                 if thought:

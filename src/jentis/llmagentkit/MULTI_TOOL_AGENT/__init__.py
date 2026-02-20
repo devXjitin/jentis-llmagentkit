@@ -18,4 +18,4 @@ from jentis.core import Tool, tool
 
 __all__ = ["Create_MultiTool_Agent", "Tool", "tool"]
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"

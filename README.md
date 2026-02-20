@@ -9,6 +9,17 @@ Each agent is optimized for different trade-offs between **speed**, **reasoning 
 
 ---
 
+## What's New in v1.0.1
+- **Critical Fix**: Resolved JSON parsing issues across all agents for robust tool execution.
+- **Prompt Optimization**: Enhanced system prompts for better adherence to JSON protocols.
+- **Agent Improvements**:
+  - `ToolCalling Agent`: Streamlined for direct execution.
+  - `ReAct Agent`: Enforced strict Thought-Action loop.
+  - `MultiTool Agent`: Fixed parallel execution logic.
+  - `ParallelReAct Agent`: Optimized for concurrent reasoning tasks.
+
+---
+
 ## Installation
 
 ```bash

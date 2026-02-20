@@ -84,9 +84,6 @@ class Create_ParallelReAct_Agent:
         if json_end > 0:
             json_str = json_str[:json_end]
         
-        # Fix double braces that LLM might copy from prompt template
-        json_str = json_str.replace('{{', '{').replace('}}', '}')
-        
         try:
             parsed_json = json.loads(json_str)
         except json.JSONDecodeError as e:
@@ -235,15 +232,15 @@ class Create_ParallelReAct_Agent:
         if self.memory and (context := self.memory.get_context()):
             memory_context = f"\n\nConversation History:\n{context}"
 
+        # Escape braces in dynamic content to prevent format() errors
+        tool_list_str = tool_list_str.replace("{", "{{").replace("}", "}}")
+        memory_context = memory_context.replace("{", "{{").replace("}", "}}")
+
         # Build tool list and compile base prompt
         compiled_prompt = self.prompt_template.replace("{tool_list}", tool_list_str).replace(
             "{previous_context}", memory_context
         )
         
-        # Escape any curly braces from tool descriptions to prevent format() errors
-        compiled_prompt = compiled_prompt.replace("{", "{{").replace("}", "}}")
-        compiled_prompt = compiled_prompt.replace("{{user_input}}", "{user_input}")
-
         self.logger.agent_start(query)
 
         prompt = compiled_prompt.format(user_input=query)
@@ -268,8 +265,9 @@ class Create_ParallelReAct_Agent:
 
             # Add tool results context from previous iteration
             full_prompt = prompt + tool_results_context
-
+            
             response = self.llm.generate_response(full_prompt)
+            
             try:
                 thought, tool_calls, final_answer = self._parser(response)
             except Exception as e:
@@ -281,7 +279,7 @@ class Create_ParallelReAct_Agent:
                 tool_results_context += f"\nYour response was not in valid JSON format."
                 tool_results_context += f"\nYou MUST respond with JSON in this exact format:"
                 tool_results_context += f"\n```json"
-                tool_results_context += f'\n{{"thought": "your reasoning", "tool_calls": [{{"tool": "name", "params": {{}}}}, ...], "final_answer": null}}'
+                tool_results_context += f'\n{{"thought": "reasoning", "tool_calls": [{{"tool": "name", "params": {{}}}}, ...], "final_answer": null}}'
                 tool_results_context += f"\n```"
                 tool_results_context += f"\nError: {str(e)[:150]}"
                 continue

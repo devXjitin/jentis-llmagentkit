@@ -32,4 +32,4 @@ __all__ = [
     "Create_ToolCalling_Agent",
 ]
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"

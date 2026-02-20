@@ -78,9 +78,6 @@ class Create_MultiTool_Agent:
         if json_end > 0:
             json_str = json_str[:json_end]
         
-        # Fix double braces that LLM might copy from prompt template
-        json_str = json_str.replace('{{', '{').replace('}}', '}')
-        
         try:
             parsed_json = json.loads(json_str)
         except json.JSONDecodeError as e:
@@ -226,16 +223,15 @@ class Create_MultiTool_Agent:
         if self.memory and (context := self.memory.get_context()):
             memory_context = f"\n\nConversation History:\n{context}"
 
+        # Escape braces in dynamic content to prevent format() errors
+        tool_list_str = tool_list_str.replace("{", "{{").replace("}", "}}")
+        memory_context = memory_context.replace("{", "{{").replace("}", "}}")
+
         # Build tool list and compile base prompt
         compiled_prompt = self.prompt_template.replace("{tool_list}", tool_list_str).replace(
             "{previous_context}", memory_context
         )
         
-        # Escape any curly braces from tool descriptions to prevent format() errors
-        # Replace { with {{ and } with }} but preserve {user_input}
-        compiled_prompt = compiled_prompt.replace("{", "{{").replace("}", "}}")
-        compiled_prompt = compiled_prompt.replace("{{user_input}}", "{user_input}")
-
         self.logger.agent_start(query)
 
         prompt = compiled_prompt.format(user_input=query)
@@ -286,10 +282,6 @@ class Create_MultiTool_Agent:
                     # Check for common errors and provide hints
                     if result['status'] == 'error' or 'No output' in str(result['result']) or result['result'] == '':
                         has_errors = True
-                        result_str = str(result['result']).lower()
-                        if 'volume' in result_str or result['tool'] == 'powershell_execute':
-                            tool_results_context += "HINT: If getting audio volume failed, the correct command is:\n"
-                            tool_results_context += "(Get-AudioDevice -Playback | Where-Object { $_.Default -eq $true }).Device.AudioEndpointVolume.MasterVolumeLevelScalar * 100\n"
                 
                 if has_errors:
                     tool_results_context += "\nNote: Some tools returned empty or error results. Consider trying alternative approaches.\n"
